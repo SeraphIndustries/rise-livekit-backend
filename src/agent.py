@@ -66,17 +66,24 @@ except Exception as e:
 
 
 class Assistant(Agent):
-    def __init__(self) -> None:
+    def __init__(self, user_name: str = None, user_phone: str = None) -> None:
+        # Determine if this is a new user or returning user
+        is_new_user = user_name is None
+
+        name_instruction = (
+            f"The user's name is {user_name}. Use their name naturally in conversation in english."
+            if user_name
+            else "FIRST, get their name by asking warmly what their name is. Once they tell you, use their name naturally throughout the conversation in english."
+        )
+
         super().__init__(
-            instructions="""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
+            instructions=f"""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
             
             IMPORTANT: You must always speak in English, regardless of what language the user speaks to you in.
             
-            This is the user's first call with you. Your goal is to gather key information through a natural, conversational flow:
+            {"This is the user's first call with you." if is_new_user else "This user has called before."} Your goal is to gather key information through a natural, conversational flow:
             
-            1. FIRST: Get their name
-               - Ask warmly what their name is
-               - Once they tell you, use their name naturally throughout the conversation
+            1. {name_instruction}
             
             2. SECOND: Understand their habits and goals
                - Ask what habits they want to build or improve
@@ -98,7 +105,8 @@ class Assistant(Agent):
             Move through the conversation naturally - don't rush, but don't linger too long on one topic.""",
         )
         self.user_data = {
-            "name": None,
+            "name": user_name,
+            "phone": user_phone,
             "habits_and_goals": None,
             "today_plan": None,
         }
@@ -116,7 +124,7 @@ class Assistant(Agent):
         Call this tool ONLY after you have collected all three pieces of information from the user.
 
         Args:
-            user_name: The user's name
+            user_name: The user's name (use the one provided, even if you already knew their name)
             habits_and_goals: A summary of the habits they want to build and their goals
             today_plan: What they plan to do today toward their goals
         """
@@ -133,18 +141,44 @@ class Assistant(Agent):
         # Save to Firebase Firestore
         if db is not None:
             try:
-                # Create a new user document in the 'users' collection
-                user_doc = {
-                    "name": user_name,
+                # Check if we need to look up the user document by phone
+                user_doc_ref = None
+                if self.user_data.get("phone"):
+                    # Try to find existing user document by phone
+                    users_ref = db.collection("users")
+                    query = users_ref.where(
+                        "phone", "==", self.user_data["phone"]
+                    ).limit(1)
+                    docs = list(query.stream())
+                    if docs:
+                        user_doc_ref = docs[0].reference
+                        logger.info(f"📝 Updating existing user document: {docs[0].id}")
+
+                # Prepare the data to save
+                onboarding_data = {
                     "habits_and_goals": habits_and_goals,
                     "today_plan": today_plan,
-                    "created_at": firestore.SERVER_TIMESTAMP,
                     "onboarding_completed_at": firestore.SERVER_TIMESTAMP,
+                    "updatedAt": firestore.SERVER_TIMESTAMP,
                 }
 
-                # Add the document - Firestore will auto-generate an ID
-                doc_ref = db.collection("users").add(user_doc)
-                logger.info(f"✅ Saved to Firestore with ID: {doc_ref[1].id}")
+                if user_doc_ref:
+                    # Update existing user document
+                    user_doc_ref.update(onboarding_data)
+                    logger.info(f"✅ Updated existing user in Firestore")
+                else:
+                    # Create new user document (for users not in the system yet)
+                    onboarding_data.update(
+                        {
+                            "name": user_name,
+                            "phone": self.user_data.get("phone", ""),
+                            "createdAt": firestore.SERVER_TIMESTAMP,
+                        }
+                    )
+                    doc_ref = db.collection("users").add(onboarding_data)
+                    logger.info(
+                        f"✅ Created new user in Firestore with ID: {doc_ref[1].id}"
+                    )
 
             except Exception as e:
                 logger.error(f"❌ Error saving to Firestore: {e}")
@@ -179,6 +213,48 @@ class Assistant(Agent):
         return "Goodbye! The call has been ended."
 
 
+async def lookup_user_by_phone(phone_number: str) -> dict:
+    """Look up user information from Firebase by phone number.
+
+    Args:
+        phone_number: Phone number in E.164 format (e.g., +18327228729)
+
+    Returns:
+        dict with user info if found, or None if not found
+    """
+    if db is None:
+        logger.warning("⚠️  Firebase not initialized, cannot lookup user")
+        return None
+
+    try:
+        # Query the users collection for a document with matching phone number
+        users_ref = db.collection("users")
+        query = users_ref.where("phone", "==", phone_number).limit(1)
+        docs = query.stream()
+
+        # Get the first matching document
+        for doc in docs:
+            user_data = doc.to_dict()
+            logger.info(
+                f"✅ Found user in Firebase: {user_data.get('name')} ({phone_number})"
+            )
+            return {
+                "doc_id": doc.id,
+                "name": user_data.get("name"),
+                "email": user_data.get("email"),
+                "phone": user_data.get("phone"),
+                "timezone": user_data.get("timezone"),
+                "schedule_time": user_data.get("scheduleTime"),
+            }
+
+        logger.info(f"ℹ️  No user found for phone number: {phone_number}")
+        return None
+
+    except Exception as e:
+        logger.error(f"❌ Error looking up user by phone: {e}")
+        return None
+
+
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
@@ -197,18 +273,69 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"📝 Metadata: {ctx.job.metadata}")
     logger.info("=" * 60)
 
-    # Check if this is an outbound call
+    # Get phone number from metadata (outbound) or will get from SIP participant (inbound)
     phone_number = None
-    try:
-        if ctx.job.metadata:
-            metadata = json.loads(ctx.job.metadata)
-            phone_number = metadata.get("phone_number")
-            if phone_number:
-                logger.info(f"📞 Outbound call to: {phone_number}")
-    except json.JSONDecodeError:
-        logger.warning("⚠️  Could not parse job metadata")
-    except Exception as e:
-        logger.warning(f"⚠️  Error reading metadata: {e}")
+
+    # For testing in console mode: check for TEST_PHONE_NUMBER env var
+    test_phone = os.getenv("TEST_PHONE_NUMBER")
+    if test_phone:
+        phone_number = test_phone
+        logger.info(
+            f"🧪 TEST MODE: Using phone number from environment: {phone_number}"
+        )
+
+    # Otherwise get from metadata (production/real calls)
+    if not test_phone:
+        try:
+            if ctx.job.metadata:
+                metadata = json.loads(ctx.job.metadata)
+                phone_number = metadata.get("phone_number")
+                if phone_number:
+                    logger.info(f"📞 Outbound call to: {phone_number}")
+        except json.JSONDecodeError:
+            logger.warning("⚠️  Could not parse job metadata")
+        except Exception as e:
+            logger.warning(f"⚠️  Error reading metadata: {e}")
+
+    # If still no phone number, connect and check for SIP participant (inbound call)
+    already_connected = False
+    if not phone_number and not test_phone:
+        logger.info("📥 Waiting for SIP participant to join (inbound call)...")
+        await ctx.connect()
+        already_connected = True
+
+        # Give participant a moment to fully join
+        import asyncio
+
+        await asyncio.sleep(0.5)
+
+        # Get the caller's phone number from SIP participant attributes
+        for participant in ctx.room.remote_participants.values():
+            if hasattr(participant, "attributes"):
+                # SIP participants have their phone number in attributes
+                caller_number = participant.attributes.get(
+                    "sip.phoneNumber"
+                ) or participant.attributes.get("sip.callerId")
+                if caller_number:
+                    phone_number = caller_number
+                    logger.info(f"📞 Inbound call from: {phone_number}")
+                    break
+
+        if not phone_number:
+            logger.warning(
+                "⚠️  Could not determine caller phone number from SIP participant"
+            )
+
+    # Look up user information by phone number
+    user_info = None
+    user_name = None
+    if phone_number:
+        user_info = await lookup_user_by_phone(phone_number)
+        if user_info:
+            user_name = user_info.get("name")
+            logger.info(f"👤 User identified: {user_name}")
+        else:
+            logger.info(f"👤 New user - phone number not in database: {phone_number}")
 
     # 🧪 TEST: Log call session to Firebase
     if db is not None:
@@ -217,6 +344,7 @@ async def entrypoint(ctx: JobContext):
                 "job_id": ctx.job.id,
                 "room_name": ctx.room.name,
                 "phone_number": phone_number,
+                "user_name": user_name,  # Will be None if user not found
                 "metadata": ctx.job.metadata or "",
                 "started_at": firestore.SERVER_TIMESTAMP,
                 "agent_type": "onboarding",
@@ -241,17 +369,6 @@ async def entrypoint(ctx: JobContext):
             # instructions are set in the Assistant class above
         )
     )
-
-    # Alternative: Traditional voice pipeline (STT + LLM + TTS)
-    # Uncomment this and comment out the Realtime API above if you want more control
-    # session = AgentSession(
-    #     stt="assemblyai/universal-streaming:en",
-    #     llm="openai/gpt-4.1-mini",
-    #     tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
-    #     turn_detection=MultilingualModel(),
-    #     vad=ctx.proc.userdata["vad"],
-    #     preemptive_generation=True,
-    # )
 
     # Metrics collection, to measure pipeline performance
     # For more information, see https://docs.livekit.io/agents/build/metrics/
@@ -279,7 +396,7 @@ async def entrypoint(ctx: JobContext):
     # Start the session, which initializes the voice pipeline and warms up the models
     logger.info("🔧 Starting agent session...")
     await session.start(
-        agent=Assistant(),
+        agent=Assistant(user_name=user_name, user_phone=phone_number),
         room=ctx.room,
         room_input_options=RoomInputOptions(
             # For telephony applications, use `BVCTelephony` for best results
@@ -288,21 +405,39 @@ async def entrypoint(ctx: JobContext):
     )
     logger.info("✅ Agent session started successfully")
 
-    # Join the room and connect to the user
-    logger.info("🔗 Connecting to room...")
-    await ctx.connect()
-    logger.info("✅ Connected to room")
+    # Join the room and connect to the user (if not already connected)
+    if not already_connected:
+        logger.info("🔗 Connecting to room...")
+        await ctx.connect()
+        logger.info("✅ Connected to room")
+    else:
+        logger.info("✅ Already connected to room (from inbound call detection)")
 
     # For outbound calls, wait for the call to be picked up before greeting
-    # For inbound calls, greet immediately
-    if phone_number is None:
-        logger.info("👋 Starting onboarding conversation (inbound call)")
-        await session.generate_reply(
-            instructions="Warmly welcome the user and start the onboarding by asking for their name. Keep it brief, friendly, and natural - like a coach starting a conversation."
-        )
+    # For inbound calls or test mode, greet immediately
+    if phone_number is None or test_phone or already_connected:
+        # Inbound call or test mode - greet immediately
+        if test_phone:
+            logger.info("🧪 TEST MODE: Starting console conversation with user lookup")
+        elif already_connected:
+            logger.info("📥 Greeting inbound caller")
+        else:
+            logger.info("👋 Starting onboarding conversation")
+
+        # Greet based on whether we know the user's name
+        if user_name:
+            await session.generate_reply(
+                instructions=f"Warmly greet {user_name} by name and start the onboarding conversation. Ask about their habits and goals. Keep it brief, friendly, and natural - like a coach starting a conversation."
+            )
+        else:
+            await session.generate_reply(
+                instructions="Warmly welcome the user and start the onboarding by asking for their name. Keep it brief, friendly, and natural - like a coach starting a conversation."
+            )
     else:
+        # Real outbound call - wait for them to answer
         logger.info("📞 Waiting for outbound call to be answered...")
         # For outbound calls, we'll greet once they answer
+        # The greeting will be personalized if user_name is set
 
 
 if __name__ == "__main__":
