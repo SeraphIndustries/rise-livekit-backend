@@ -11,6 +11,7 @@ from livekit.agents import (
     Agent,
     AgentSession,
     ConversationItemAddedEvent,
+    FunctionToolsExecutedEvent,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -617,7 +618,11 @@ For example:
 
 
 async def save_message_to_conversation(
-    conversation_id: str, user_id: str, role: str, message: str
+    conversation_id: str,
+    user_id: str,
+    role: str,
+    message: str,
+    tool_calls: list = None,
 ) -> None:
     """Save a message to the conversation's messages subcollection in Firestore.
 
@@ -626,18 +631,24 @@ async def save_message_to_conversation(
         user_id: The ID of the user document (can be None)
         role: Either 'user' or 'assistant'
         message: The message text
+        tool_calls: Optional list of tool calls associated with this message
     """
     if db is None:
         return
 
     try:
         # Create message document in conversation's messages subcollection
+        # Only include tool_calls if there are actual tool calls
         message_doc = {
             "role": role,
             "message": message,
             "user_id": user_id,
             "timestamp": firestore.SERVER_TIMESTAMP,
         }
+
+        # Add tool_calls field only if we have tool calls (keeps Firebase cleaner)
+        if tool_calls and len(tool_calls) > 0:
+            message_doc["tool_calls"] = tool_calls
 
         # Add to the messages subcollection
         message_ref = (
@@ -659,11 +670,21 @@ async def save_message_to_conversation(
             }
         )
 
-        logger.info(
-            f"💬 Saved {role} message to conversation {conversation_id}/messages (ID: {message_id})"
-        )
+        if tool_calls and len(tool_calls) > 0:
+            logger.info(
+                f"💬 Saved {role} message with {len(tool_calls)} tool call(s) to conversation {conversation_id}/messages (ID: {message_id})"
+            )
+            for tc in tool_calls:
+                logger.info(f"   🔧 {tc['name']}: {tc.get('arguments', {})}")
+        else:
+            logger.info(
+                f"💬 Saved {role} message to conversation {conversation_id}/messages (ID: {message_id})"
+            )
     except Exception as e:
         logger.error(f"❌ Error saving message to conversation: {e}")
+        import traceback
+
+        logger.error(traceback.format_exc())
 
 
 def calculate_current_impact(event: dict) -> float:
@@ -985,10 +1006,45 @@ async def entrypoint(ctx: JobContext):
         metrics.log_metrics(ev.metrics)
         usage_collector.collect(ev.metrics)
 
+    # Track recent tool calls to associate with messages
+    recent_tool_calls = []
+
     # Real-time conversation logging
+    @session.on("function_tools_executed")
+    def _on_tools_executed(ev: FunctionToolsExecutedEvent):
+        """Triggered when function tools are executed."""
+        nonlocal recent_tool_calls
+
+        try:
+            # Capture tool call information
+            for func_call, func_output in ev.zipped():
+                # Extract tool call data
+                tool_call_data = {
+                    "name": func_call.name,
+                    "arguments": func_call.arguments,
+                    "output": str(func_output.output) if func_output.output else None,
+                }
+
+                recent_tool_calls.append(tool_call_data)
+                logger.info(f"🔧 Tool executed: {func_call.name}")
+                logger.info(f"   Arguments: {func_call.arguments}")
+                logger.info(
+                    f"   Output: {str(func_output.output)[:100] if func_output.output else 'None'}"
+                )
+                logger.info(
+                    f"   Captured in recent_tool_calls (count: {len(recent_tool_calls)})"
+                )
+        except Exception as e:
+            logger.error(f"❌ Error in function_tools_executed handler: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
+
     @session.on("conversation_item_added")
     def _on_conversation_item(ev: ConversationItemAddedEvent):
         """Triggered when user or agent message is committed to chat history."""
+        nonlocal recent_tool_calls
+
         if not conversation_id:
             return
 
@@ -997,17 +1053,45 @@ async def entrypoint(ctx: JobContext):
             role = ev.item.role  # "user" or "assistant"
             message_text = ev.item.text_content  # The message text
 
+            logger.info(
+                f"📝 conversation_item_added event: role={role}, recent_tool_calls count={len(recent_tool_calls)}"
+            )
+
             if message_text:
+                # Associate tool calls with assistant messages
+                tool_calls_to_save = None
+                if role == "assistant":
+                    if recent_tool_calls:
+                        tool_calls_to_save = recent_tool_calls.copy()
+                        logger.info(
+                            f"🔧 Associating {len(tool_calls_to_save)} tool call(s) with message"
+                        )
+                        logger.info(
+                            f"   Tool calls: {[tc['name'] for tc in tool_calls_to_save]}"
+                        )
+                        recent_tool_calls.clear()  # Clear for next message
+                    else:
+                        logger.info(
+                            f"💬 No recent tool calls to associate with assistant message"
+                        )
+
                 logger.info(f"💬 Saving {role} message: {message_text[:50]}...")
                 import asyncio
 
                 asyncio.create_task(
                     save_message_to_conversation(
-                        conversation_id, user_doc_id, role, message_text
+                        conversation_id,
+                        user_doc_id,
+                        role,
+                        message_text,
+                        tool_calls=tool_calls_to_save,
                     )
                 )
         except Exception as e:
             logger.error(f"❌ Error in conversation_item_added handler: {e}")
+            import traceback
+
+            logger.error(traceback.format_exc())
 
     async def log_usage():
         summary = usage_collector.get_summary()
