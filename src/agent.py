@@ -1,7 +1,11 @@
 import json
 import logging
+import os
+from datetime import datetime
 
+import firebase_admin
 from dotenv import load_dotenv
+from firebase_admin import credentials, firestore
 from livekit import api
 from livekit.agents import (
     Agent,
@@ -10,11 +14,11 @@ from livekit.agents import (
     JobProcess,
     MetricsCollectedEvent,
     RoomInputOptions,
+    RunContext,
     WorkerOptions,
     cli,
     function_tool,
     metrics,
-    RunContext,
 )
 from livekit.plugins import noise_cancellation, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -24,33 +28,131 @@ logger.setLevel(logging.INFO)
 
 load_dotenv(".env.local")
 
+# Initialize Firebase
+firebase_app = None
+db = None
+
+try:
+    # Try to get Firebase credentials from environment
+    # Option 1: File path (for local development)
+    service_account_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+
+    # Option 2: Base64-encoded JSON (for deployment)
+    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+
+    if service_account_json:
+        # Decode base64 JSON credentials (used in deployment)
+        import base64
+
+        decoded_json = base64.b64decode(service_account_json).decode("utf-8")
+        cred_dict = json.loads(decoded_json)
+        cred = credentials.Certificate(cred_dict)
+        firebase_app = firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        logger.info("✅ Firebase initialized successfully (from env JSON)")
+    elif service_account_path and os.path.exists(service_account_path):
+        # Use file path (local development)
+        cred = credentials.Certificate(service_account_path)
+        firebase_app = firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        logger.info("✅ Firebase initialized successfully (from file)")
+    else:
+        logger.warning(
+            "⚠️  Firebase credentials not found. Set FIREBASE_SERVICE_ACCOUNT_PATH or FIREBASE_SERVICE_ACCOUNT_JSON"
+        )
+except Exception as e:
+    logger.warning(f"⚠️  Could not initialize Firebase: {e}")
+    logger.warning("   Data will be logged but not saved to database")
+
 
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(
-            instructions="""You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
-            You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
-            You are curious, friendly, and have a sense of humor.""",
+            instructions="""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
+            
+            IMPORTANT: You must always speak in English, regardless of what language the user speaks to you in.
+            
+            This is the user's first call with you. Your goal is to gather key information through a natural, conversational flow:
+            
+            1. FIRST: Get their name
+               - Ask warmly what their name is
+               - Once they tell you, use their name naturally throughout the conversation
+            
+            2. SECOND: Understand their habits and goals
+               - Ask what habits they want to build or improve
+               - Ask about their goals and what they're working toward
+               - Be curious and encouraging. Ask follow-up questions to understand their "why"
+            
+            3. THIRD: Plan for today
+               - Ask what they plan to do today to work toward their goals
+               - Help them be specific and realistic
+            
+            After gathering all this information, use the save_onboarding_info tool to save everything.
+            
+            Keep your responses:
+            - Conversational and warm, not robotic
+            - Concise (1-2 sentences at a time)
+            - Without complex formatting, emojis, or asterisks
+            - Encouraging and supportive
+            
+            Move through the conversation naturally - don't rush, but don't linger too long on one topic.""",
         )
+        self.user_data = {
+            "name": None,
+            "habits_and_goals": None,
+            "today_plan": None,
+        }
 
-    # Example tool: Weather lookup
-    # Uncomment this to enable it and test in console mode!
     @function_tool
-    async def lookup_weather(self, context: RunContext, location: str):
-        """Use this tool to look up current weather information in the given location.
+    async def save_onboarding_info(
+        self,
+        context: RunContext,
+        user_name: str,
+        habits_and_goals: str,
+        today_plan: str,
+    ):
+        """Save the user's onboarding information after gathering their name, habits/goals, and today's plan.
 
-        If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
+        Call this tool ONLY after you have collected all three pieces of information from the user.
 
         Args:
-            location: The location to look up weather information for (e.g. city name)
+            user_name: The user's name
+            habits_and_goals: A summary of the habits they want to build and their goals
+            today_plan: What they plan to do today toward their goals
         """
+        logger.info("💾 Saving onboarding information")
+        logger.info(f"   Name: {user_name}")
+        logger.info(f"   Habits/Goals: {habits_and_goals}")
+        logger.info(f"   Today's Plan: {today_plan}")
 
-        logger.info(f"🌤️  Looking up weather for {location}")
+        # Store in instance for this session
+        self.user_data["name"] = user_name
+        self.user_data["habits_and_goals"] = habits_and_goals
+        self.user_data["today_plan"] = today_plan
 
-        # TODO: Replace with actual weather API call
-        # For now, return mock data for testing
-        return f"The weather in {location} is sunny with a temperature of 70 degrees."
+        # Save to Firebase Firestore
+        if db is not None:
+            try:
+                # Create a new user document in the 'users' collection
+                user_doc = {
+                    "name": user_name,
+                    "habits_and_goals": habits_and_goals,
+                    "today_plan": today_plan,
+                    "created_at": firestore.SERVER_TIMESTAMP,
+                    "onboarding_completed_at": firestore.SERVER_TIMESTAMP,
+                }
+
+                # Add the document - Firestore will auto-generate an ID
+                doc_ref = db.collection("users").add(user_doc)
+                logger.info(f"✅ Saved to Firestore with ID: {doc_ref[1].id}")
+
+            except Exception as e:
+                logger.error(f"❌ Error saving to Firestore: {e}")
+                logger.info("   Data logged locally but not saved to database")
+        else:
+            logger.warning("   Firebase not configured - data logged only")
+
+        return f"Perfect! I've saved all your information, {user_name}. I'm excited to help you on your journey. Let me know if there's anything else I can help you with today, or feel free to end the call whenever you're ready."
 
     # Example tool: End call
     @function_tool
@@ -107,6 +209,26 @@ async def entrypoint(ctx: JobContext):
         logger.warning("⚠️  Could not parse job metadata")
     except Exception as e:
         logger.warning(f"⚠️  Error reading metadata: {e}")
+
+    # 🧪 TEST: Log call session to Firebase
+    if db is not None:
+        try:
+            session_doc = {
+                "job_id": ctx.job.id,
+                "room_name": ctx.room.name,
+                "phone_number": phone_number,
+                "metadata": ctx.job.metadata or "",
+                "started_at": firestore.SERVER_TIMESTAMP,
+                "agent_type": "onboarding",
+            }
+            doc_ref = db.collection("call_sessions").add(session_doc)
+            logger.info(
+                f"✅ Firebase TEST: Logged session to Firestore (ID: {doc_ref[1].id})"
+            )
+        except Exception as e:
+            logger.error(f"❌ Firebase TEST failed: {e}")
+    else:
+        logger.warning("⚠️  Firebase TEST skipped: DB not initialized")
 
     # Using OpenAI Realtime API - single model for speech, understanding, and response
     # This is simpler and faster than the traditional pipeline (STT + LLM + TTS)
@@ -174,12 +296,13 @@ async def entrypoint(ctx: JobContext):
     # For outbound calls, wait for the call to be picked up before greeting
     # For inbound calls, greet immediately
     if phone_number is None:
-        logger.info("👋 Greeting user (inbound call)")
+        logger.info("👋 Starting onboarding conversation (inbound call)")
         await session.generate_reply(
-            instructions="Greet the user warmly and ask how you can help them today."
+            instructions="Warmly welcome the user and start the onboarding by asking for their name. Keep it brief, friendly, and natural - like a coach starting a conversation."
         )
     else:
         logger.info("📞 Waiting for outbound call to be answered...")
+        # For outbound calls, we'll greet once they answer
 
 
 if __name__ == "__main__":

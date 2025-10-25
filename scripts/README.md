@@ -48,6 +48,19 @@ uv run python scripts/list_workers.py
 - Agent versions and metadata
 - Tips for checking local workers
 
+### `encode_firebase_credentials.sh`
+Encode your Firebase service account JSON for deployment.
+
+**Usage:**
+```bash
+./scripts/encode_firebase_credentials.sh firebase-service-account.json
+```
+
+**What it does:**
+- Converts your Firebase credentials to base64 format
+- Outputs the value you need to set as `FIREBASE_SERVICE_ACCOUNT_JSON` in deployment
+- Makes it safe to pass credentials as environment variables in LiveKit Cloud
+
 ## Setting Up
 
 1. Copy `.env.example` to `.env.local`:

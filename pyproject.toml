@@ -13,6 +13,7 @@ dependencies = [
     "livekit-plugins-openai",
     "livekit-plugins-noise-cancellation",
     "python-dotenv",
+    "firebase-admin",
 ]
 
 [dependency-groups]
