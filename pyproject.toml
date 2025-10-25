@@ -42,3 +42,9 @@ ignore = ["E501"]  # Line too long (handled by formatter)
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.uv]
+# Ensure uv resolves dependencies with wheels available for macOS
+constraint-dependencies = [
+    "onnxruntime>=1.18.0,<1.23.0; sys_platform == 'darwin'",
+]
