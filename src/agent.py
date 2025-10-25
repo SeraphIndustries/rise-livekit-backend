@@ -25,6 +25,366 @@ from livekit.agents import (
 from livekit.plugins import noise_cancellation, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
+
+google_sched = """
+{
+    "events": [
+        {
+            "id": "0a8fjthpeb1uibr8h83ldmvd37",
+            "summary": "Meal Prep",
+            "start": "2025-10-26T11:00:00+09:00",
+            "end": "2025-10-26T13:00:00+09:00",
+            "description": "<ul><li>Prep meals for the week</li><li>   •        •    <b>Note:</b> Good intention, rarely happens</li></ul>"
+        },
+        {
+            "id": "6q3fai2bcc3732fct3l3uij9og",
+            "summary": "Flowers for mom",
+            "start": "2025-10-26T15:00:00+09:00",
+            "end": "2025-10-26T16:00:00+09:00",
+            "description": "My monthly gift for mom"
+        },
+        {
+            "id": "0d9j4sjh73ehcr8q6o6joa5jut",
+            "summary": "Church",
+            "start": "2025-10-26T18:00:00+09:00",
+            "end": "2025-10-26T20:00:00+09:00",
+            "description": "Pastor Tim will be doing service today"
+        },
+        {
+            "id": "79fanh7vghbqgs08et7grjkn5k",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-27T09:00:00+09:00",
+            "end": "2025-10-27T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "0opsa53q7cui9288qt21ciaqbk",
+            "summary": "Product Roadmap Review",
+            "start": "2025-10-27T10:00:00+09:00",
+            "end": "2025-10-27T11:00:00+09:00",
+            "description": "<ul><li>Q4 roadmap priorities and resource allocation</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Need to finalize slides and review Q3 metrics</p>"
+        },
+        {
+            "id": "49e68q1fg903mu7l40nr4slk9o",
+            "summary": "1:1 with Jordan (Designer)",
+            "start": "2025-10-27T11:30:00+09:00",
+            "end": "2025-10-27T12:00:00+09:00",
+            "description": "<ul><li>Weekly 1:1 - design feedback and career development</li></ul>"
+        },
+        {
+            "id": "2f2jsok45th3gds9892pecqckl",
+            "summary": "User Research Debrief",
+            "start": "2025-10-27T14:00:00+09:00",
+            "end": "2025-10-27T15:00:00+09:00",
+            "description": "<ul><li>Review findings from last week's user interviews</li></ul>"
+        },
+        {
+            "id": "361qf4sal3qk7svdf5um52jsb0",
+            "summary": "Sprint Planning",
+            "start": "2025-10-27T15:30:00+09:00",
+            "end": "2025-10-27T17:00:00+09:00",
+            "description": "<ul><li>Sprint 23 planning - story estimation and commitment</li></ul>"
+        },
+        {
+            "id": "0j354i68u5kkrejklq6vtjfl8j",
+            "summary": "Gym - Olympic Lifts",
+            "start": "2025-10-27T20:00:00+09:00",
+            "end": "2025-10-27T22:00:00+09:00",
+            "description": "I need to eat a lot of fruit before this session"
+        },
+        {
+            "id": "7lseqohq3mr02j1h2ltbme6odd",
+            "summary": "Marketing Sync",
+            "start": "2025-10-28T09:30:00+09:00",
+            "end": "2025-10-28T10:00:00+09:00",
+            "description": "<ul><li>Product marketing alignment for upcoming launch</li></ul>"
+        },
+        {
+            "id": "2na5tq7q1e44667d0s0lon09es",
+            "summary": "Customer Call - Acme Corp",
+            "start": "2025-10-28T10:30:00+09:00",
+            "end": "2025-10-28T11:30:00+09:00",
+            "description": "<ul><li>Enterprise customer feedback session - integration pain points</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Review their support tickets and feature requests</p>"
+        },
+        {
+            "id": "4bjiv531th998tl2etronp4u59",
+            "summary": "LUNCH - blocked",
+            "start": "2025-10-28T12:00:00+09:00",
+            "end": "2025-10-28T12:30:00+09:00",
+            "description": "<ul><li>Personal - lunch break</li><li>   •        •    <b>Note:</b> You historically cancel this for meetings</li></ul>"
+        },
+        {
+            "id": "2tl15naju1u8ochmu9o92k6kga",
+            "summary": "Engineering Architecture Discussion",
+            "start": "2025-10-28T13:00:00+09:00",
+            "end": "2025-10-28T14:00:00+09:00",
+            "description": "<ul><li><b>Description:</b> Technical approach for notification system redesign</li></ul>"
+        },
+        {
+            "id": "3o7vdumikssm61ufee6td5gb7k",
+            "summary": "Competitive Analysis Workshop",
+            "start": "2025-10-28T14:30:00+09:00",
+            "end": "2025-10-28T16:00:00+09:00",
+            "description": "<ul><li>Deep dive on competitor features and market positioning</li></ul>"
+        },
+        {
+            "id": "5kco1hkeokhbo5gujspr4llnjd",
+            "summary": "Leadership Coffee Chat",
+            "start": "2025-10-28T16:00:00+09:00",
+            "end": "2025-10-28T17:00:00+09:00",
+            "description": "<ul><li>Informal check-in</li></ul>"
+        },
+        {
+            "id": "27ua9ure01dub8cp97ccg4ag8o",
+            "summary": "Drop dog off at groomer",
+            "start": "2025-10-28T19:00:00+09:00",
+            "end": "2025-10-28T20:00:00+09:00",
+            "description": "Missy's hair is getting too long"
+        },
+        {
+            "id": "617l34o4ms6reqf6gv4nl7qkap",
+            "summary": "Meditation",
+            "start": "2025-10-28T21:00:00+09:00",
+            "end": "2025-10-28T21:30:00+09:00",
+            "description": "My weekly re-sync"
+        },
+        {
+            "id": "3n2ekq1kcagb7q8kgiqdb6do0p",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-29T09:00:00+09:00",
+            "end": "2025-10-29T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "3d7uhin55ujf3s44khrm4t1d7r",
+            "summary": "Product Strategy Session",
+            "start": "2025-10-29T10:00:00+09:00",
+            "end": "2025-10-29T12:00:00+09:00",
+            "description": "<ul><li>2026 vision and long-term strategy planning</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Bring ideas for new verticals</p>"
+        },
+        {
+            "id": "7d1lii8oauua68i3ll0962encj",
+            "summary": "FOCUS TIME - Product Spec",
+            "start": "2025-10-29T13:00:00+09:00",
+            "end": "2025-10-29T15:00:00+09:00",
+            "description": "<ul><li>Deep work: finish notification system spec</li><li>   •        •    <b>Note:</b> Protected time - created 2 weeks ago but keep getting meeting requests</li></ul>"
+        },
+        {
+            "id": "69l9ancb7m9p8h65bd394ordvm",
+            "summary": "Design Review",
+            "start": "2025-10-29T15:00:00+09:00",
+            "end": "2025-10-29T16:30:00+09:00",
+            "description": "<ul><li>Weekly design critique and feedback</li></ul>"
+        },
+        {
+            "id": "7g6tdhj4l18hl5mn3v0ie5mi5r",
+            "summary": "Dinner Date",
+            "start": "2025-10-29T18:00:00+09:00",
+            "end": "2025-10-29T19:00:00+09:00",
+            "description": "Third time meeting up with Stacy"
+        },
+        {
+            "id": "7s1to8fmv3ev3crhafh6r5cumm",
+            "summary": "All-Hands Meeting",
+            "start": "2025-10-30T09:00:00+09:00",
+            "end": "2025-10-30T10:00:00+09:00",
+            "description": "<ul><li>Monthly company-wide update from CEO</li></ul>"
+        },
+        {
+            "id": "0du8k9rkh8o2crp1ch8tlkqvve",
+            "summary": "Vendor Demo - Analytics Tool",
+            "start": "2025-10-30T10:30:00+09:00",
+            "end": "2025-10-30T11:30:00+09:00",
+            "description": "<ul><li>Evaluating new product analytics platform</li></ul>"
+        },
+        {
+            "id": "0o9qk6v7j8thgidcrcotampch7",
+            "summary": "Budget Planning Q1",
+            "start": "2025-10-30T13:00:00+09:00",
+            "end": "2025-10-30T14:00:00+09:00",
+            "description": "<ul><li>2026 Q1 budget allocation and headcount planning</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Need to submit team priorities by end of week</p>"
+        },
+        {
+            "id": "5s28clodfivonhaes1j44tbts5",
+            "summary": "User Testing Observation",
+            "start": "2025-10-30T15:00:00+09:00",
+            "end": "2025-10-30T16:00:00+09:00",
+            "description": "<ul><li>Watch users test new onboarding flow</li></ul>"
+        },
+        {
+            "id": "6172aeuabc3plo5oftjn7995at",
+            "summary": "URGENT: Bug Triage",
+            "start": "2025-10-30T16:30:00+09:00",
+            "end": "2025-10-30T17:30:00+09:00",
+            "description": "<ul><li>Critical production bug affecting enterprise customers</li><li>   •        •    <b>Note:</b> Last-minute addition - added at 3:45 PM same day</li></ul>"
+        },
+        {
+            "id": "7747deq5hmlbn8t5netuhhifu3",
+            "summary": "Movie with the guys",
+            "start": "2025-10-30T20:00:00+09:00",
+            "end": "2025-10-30T22:00:00+09:00",
+            "description": "Our weekly catch up and unwind"
+        },
+        {
+            "id": "3ltfmro11s44c1nh2d1b5q9u2u",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-31T09:00:00+09:00",
+            "end": "2025-10-31T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "77p27eiabqgnck4gt35c8612dt",
+            "summary": "Sprint Retro",
+            "start": "2025-10-31T10:00:00+09:00",
+            "end": "2025-10-31T11:00:00+09:00",
+            "description": "<ul><li>Sprint 22 retrospective - what went well, what to improve</li></ul>"
+        },
+        {
+            "id": "40sea5k2tqhfgciai8980r4tg4",
+            "summary": "1:1 with Manager",
+            "start": "2025-10-31T11:30:00+09:00",
+            "end": "2025-10-31T12:00:00+09:00",
+            "description": "<ul><li>Weekly 1:1 - projects, blockers, career development</li></ul>"
+        },
+        {
+            "id": "43om9cvpp6mqi64rb9ftb0pi8i",
+            "summary": "Product Demo - Internal",
+            "start": "2025-10-31T14:00:00+09:00",
+            "end": "2025-10-31T15:00:00+09:00",
+            "description": "<ul><li>Show recent features to internal stakeholders</li></ul>"
+        },
+        {
+            "id": "0vcnb3jds4ecnmoqc57q1j57n3",
+            "summary": "FOCUS TIME - Catch up",
+            "start": "2025-10-31T15:30:00+09:00",
+            "end": "2025-10-31T17:00:00+09:00",
+            "description": "<ul><li>Finish anything that slipped this week</li><li>   •        •    <b>Note:</b> Optimistically created but usually given up</li></ul>"
+        },
+        {
+            "id": "5lj6vcmkdbpqugvbb7t8j0amn3",
+            "summary": "Dentist Appointment",
+            "start": "2025-11-01T10:00:00+09:00",
+            "end": "2025-11-01T11:00:00+09:00",
+            "description": "<ul><li>Regular checkup - overdue by 3 months</li><li>   •        •    <b>Note:</b> Rescheduled twice already</li></ul>"
+        },
+        {
+            "id": "601m8acmfddehu912agngp1lb3",
+            "summary": "Gym - blocked",
+            "start": "2025-11-01T14:00:00+09:00",
+            "end": "2025-11-01T15:00:00+09:00",
+            "description": "<ul><li>Weekend workout</li></ul>"
+        }
+    ]
+}
+"""
+
+google_tasks = """
+{
+    "tasks": [
+        {
+            "id": "U3pBbUo4MVVpby1vdGRyYQ",
+            "title": "10. Competitive analysis doc",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: Started research but haven't written anything up yet\n",
+            "updated": "2025-10-25T06:46:48.695Z"
+        },
+        {
+            "id": "blAzb1l4RkpWSTdDeU96Mw",
+            "title": "9. Update PRD for mobile app redesign",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-30T00:00:00.000Z",
+            "notes": "* Notes: Half done but lost momentum\n",
+            "updated": "2025-10-25T06:46:32.279Z"
+        },
+        {
+            "id": "cllpU2hTUlJEMkZHSk5FWg",
+            "title": "8. Review sprint 23 tickets ⚠️",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: Need to groom backlog before Monday planning\n",
+            "updated": "2025-10-25T06:46:17.720Z"
+        },
+        {
+            "id": "YXZfX2F3aWQ1OEJTVS1BNg",
+            "title": "7. Respond to Acme Corp feature requests",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: They sent 8 feature requests. Need to prioritize and respond diplomatically.\n",
+            "updated": "2025-10-25T06:46:02.734Z"
+        },
+        {
+            "id": "V281cHBCUWNLWjFyemp6Mg",
+            "title": "6. Write performance reviews for direct reports 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-31T00:00:00.000Z",
+            "notes": "* Notes: Dreading this. Have notes scattered everywhere.\n",
+            "updated": "2025-10-25T06:45:49.182Z"
+        },
+        {
+            "id": "Y0ZDYlVMRVFOWUY2akM3bQ",
+            "title": "5. Submit budget headcount plan 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: Finance needs this by EOW. No idea what to ask for yet.\n",
+            "updated": "2025-10-25T06:45:32.383Z"
+        },
+        {
+            "id": "RDNoeFdNZXVHc18yRVpFYg",
+            "title": "4. Write Q4 team goals 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-27T00:00:00.000Z",
+            "notes": "* Notes: Manager has asked 3 times. This is getting embarrassing.\n",
+            "updated": "2025-10-25T06:45:12.889Z"
+        },
+        {
+            "id": "RGlCR2tBZjFwZFBmUWZpZw",
+            "title": "3. Update roadmap deck for exec review 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: VP wants to see this before Thursday's all-hands\n",
+            "updated": "2025-10-25T06:44:57.540Z"
+        },
+        {
+            "id": "bGRqOS1iUEJQaU9YSGlpXw",
+            "title": "Review Jordan's design mockups 🔥⚠️",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: Jordan needs feedback before Thursday. They're blocked.\n",
+            "updated": "2025-10-25T06:44:32.668Z"
+        },
+        {
+            "id": "X1I0c0dKMUZCWDVIQWRuWQ",
+            "title": "1. Finish notification system product spec 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-27T00:00:00.000Z",
+            "notes": "* Notes: Started but keep getting interrupted. Need 3-4 focused hours.\n* Subtasks:\n    * ✅ Define user stories (DONE)\n    * ⏳ Technical requirements doc (IN PROGRESS)\n    * ⏳ Get engineering review (NOT STARTED)",
+            "updated": "2025-10-25T06:44:03.177Z"
+        }
+    ]
+}
+"""
+
 logger = logging.getLogger("agent")
 logger.setLevel(logging.INFO)
 
@@ -76,7 +436,7 @@ class Assistant(Agent):
         conversation_id: str = None,
         existing_habits: list = None,
         exceptional_events: list = None,
-        is_outbound: bool = False,
+        is_outbound: bool = True,
     ) -> None:
         # Determine if this is a new user or returning user
         is_new_user = user_name is None
@@ -146,19 +506,26 @@ For example:
             
             Your check-in flow (keep it tight and focused):
             
-            1. Greet {user_name} warmly and briefly explain you're calling for their daily check-in
+            1. FIRST: Call get_user_schedule and get_user_tasks to understand their calendar and to-do list
             
-            2. IMMEDIATELY ask about their habits:
+            2. Greet {user_name} warmly and briefly explain you're calling for their daily check-in
+            
+            3. IMMEDIATELY ask about their habits:
                - Go through each habit one by one
                - Ask: "How did you do with [habit name] today?"
                - Use log_habit_progress for each update they share
                - Keep questions direct and specific
             
-            3. Check on exceptional events (if any):
+            4. Check on exceptional events (if any):
                - Ask how they're feeling about each event
                - Use update_exceptional_event when they share updates
             
-            4. Wrap up efficiently:
+            5. Use context from their schedule and tasks to provide relevant coaching:
+               - Reference upcoming deadlines or busy periods
+               - Acknowledge workload when discussing habit challenges
+               - Suggest time slots for habits based on their calendar
+            
+            6. Wrap up efficiently:
                - Encourage them briefly
                - Ask if there's anything else they need
                - Don't prolong the call unnecessarily
@@ -180,15 +547,23 @@ For example:
             
             Your conversation flow:
             
-            1. {name_instruction}
+            1. FIRST: Call get_user_schedule and get_user_tasks to understand their calendar and to-do list
             
-            2. {"Ask what habits they want to build or improve." if not has_habits else "Check in on their existing habits and see if they want to add new ones."}
+            2. {name_instruction}
+            
+            3. {"Ask what habits they want to build or improve." if not has_habits else "Check in on their existing habits and see if they want to add new ones."}
                - Be curious and encouraging. Ask follow-up questions to understand their "why"
                - When they mention a specific habit they want to work on, use the create_or_update_habit tool to save it
                - When they share progress on an existing habit, use the log_habit_progress tool
                - If they mention an injury, illness, stress, or other temporary disruption, use create_exceptional_event tool
             
-            3. Plan for today
+            4. Use context from their schedule and tasks to provide relevant coaching:
+               - Reference upcoming deadlines or busy periods
+               - Acknowledge workload when discussing habit challenges
+               - Suggest time slots for habits based on their calendar
+               - Help them prioritize and be realistic given their commitments
+            
+            5. Plan for today
                - Ask what they plan to do today to work toward their goals
                - Help them be specific and realistic
             
@@ -212,6 +587,32 @@ For example:
         self.existing_habits = existing_habits or []
         self.exceptional_events = exceptional_events or []
         self.is_outbound = is_outbound
+
+    @function_tool
+    async def get_user_schedule(self, context: RunContext):
+        """Retrieve the user's Google Calendar schedule.
+
+        Call this at the beginning of the conversation to understand what events
+        the user has coming up. This helps provide context-aware coaching.
+
+        Returns:
+            JSON string containing the user's calendar events
+        """
+        logger.info("📅 Retrieving user's Google Calendar schedule")
+        return google_sched
+
+    @function_tool
+    async def get_user_tasks(self, context: RunContext):
+        """Retrieve the user's Google Tasks list.
+
+        Call this at the beginning of the conversation to understand what tasks
+        the user needs to complete. This helps provide context-aware coaching.
+
+        Returns:
+            JSON string containing the user's tasks
+        """
+        logger.info("✅ Retrieving user's Google Tasks")
+        return google_tasks
 
     @function_tool
     async def create_or_update_habit(
@@ -909,7 +1310,7 @@ async def entrypoint(ctx: JobContext):
 
     # Get phone number from metadata (outbound) or will get from SIP participant (inbound)
     phone_number = None
-    is_outbound_call = False
+    is_outbound_call = True
 
     # For testing in console mode: check for TEST_PHONE_NUMBER env var
     test_phone = os.getenv("TEST_PHONE_NUMBER")
