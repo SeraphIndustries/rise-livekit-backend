@@ -76,6 +76,7 @@ class Assistant(Agent):
         conversation_id: str = None,
         existing_habits: list = None,
         exceptional_events: list = None,
+        is_outbound: bool = False,
     ) -> None:
         # Determine if this is a new user or returning user
         is_new_user = user_name is None
@@ -134,8 +135,44 @@ For example:
 - If traveling, acknowledge disrupted routines are normal
 """
 
-        super().__init__(
-            instructions=f"""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
+        # Different instructions for outbound (check-in) vs inbound (open) calls
+        if is_outbound and has_habits:
+            # Outbound call - directive check-in mode
+            instructions = f"""You are a personal growth coach checking in with {user_name}. The user is interacting with you via voice.
+            
+            IMPORTANT: You must always speak in English, regardless of what language the user speaks to you in.
+            
+            YOU CALLED THEM for their daily check-in. Be direct and focused.{habits_context}{events_context}
+            
+            Your check-in flow (keep it tight and focused):
+            
+            1. Greet {user_name} warmly and briefly explain you're calling for their daily check-in
+            
+            2. IMMEDIATELY ask about their habits:
+               - Go through each habit one by one
+               - Ask: "How did you do with [habit name] today?"
+               - Use log_habit_progress for each update they share
+               - Keep questions direct and specific
+            
+            3. Check on exceptional events (if any):
+               - Ask how they're feeling about each event
+               - Use update_exceptional_event when they share updates
+            
+            4. Wrap up efficiently:
+               - Encourage them briefly
+               - Ask if there's anything else they need
+               - Don't prolong the call unnecessarily
+            
+            Keep your responses:
+            - Direct and focused (this is a check-in, not a long conversation)
+            - Concise (1 sentence at a time)
+            - Without complex formatting, emojis, or asterisks
+            - Warm but efficient
+            
+            Move quickly through the check-in - respect their time."""
+        else:
+            # Inbound call or first-time user - open conversation mode
+            instructions = f"""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
             
             IMPORTANT: You must always speak in English, regardless of what language the user speaks to you in.
             
@@ -161,8 +198,9 @@ For example:
             - Without complex formatting, emojis, or asterisks
             - Encouraging and supportive
             
-            Move through the conversation naturally - don't rush, but don't linger too long on one topic.""",
-        )
+            Move through the conversation naturally - don't rush, but don't linger too long on one topic."""
+
+        super().__init__(instructions=instructions)
         self.user_data = {
             "name": user_name,
             "phone": user_phone,
@@ -173,6 +211,7 @@ For example:
         self.conversation_id = conversation_id
         self.existing_habits = existing_habits or []
         self.exceptional_events = exceptional_events or []
+        self.is_outbound = is_outbound
 
     @function_tool
     async def create_or_update_habit(
@@ -870,14 +909,20 @@ async def entrypoint(ctx: JobContext):
 
     # Get phone number from metadata (outbound) or will get from SIP participant (inbound)
     phone_number = None
+    is_outbound_call = False
 
     # For testing in console mode: check for TEST_PHONE_NUMBER env var
     test_phone = os.getenv("TEST_PHONE_NUMBER")
+    test_outbound = os.getenv("TEST_OUTBOUND_MODE", "").lower() in ("true", "1", "yes")
+
     if test_phone:
         phone_number = test_phone
+        is_outbound_call = test_outbound
         logger.info(
             f"🧪 TEST MODE: Using phone number from environment: {phone_number}"
         )
+        if test_outbound:
+            logger.info(f"🧪 TEST MODE: Simulating outbound call (check-in mode)")
 
     # Otherwise get from metadata (production/real calls)
     if not test_phone:
@@ -886,6 +931,9 @@ async def entrypoint(ctx: JobContext):
                 metadata = json.loads(ctx.job.metadata)
                 phone_number = metadata.get("phone_number")
                 if phone_number:
+                    is_outbound_call = (
+                        True  # If phone_number in metadata, it's an outbound call
+                    )
                     logger.info(f"📞 Outbound call to: {phone_number}")
         except json.JSONDecodeError:
             logger.warning("⚠️  Could not parse job metadata")
@@ -954,6 +1002,7 @@ async def entrypoint(ctx: JobContext):
                 "phone_number": phone_number,
                 "user_name": user_name,  # Will be None if user not found
                 "user_id": user_doc_id,  # Link to user document for easy queries
+                "call_type": "outbound" if is_outbound_call else "inbound",
                 "started_at": firestore.SERVER_TIMESTAMP,
                 "ended_at": None,
                 "status": "active",
@@ -974,9 +1023,10 @@ async def entrypoint(ctx: JobContext):
                 "phone_number": phone_number,
                 "user_name": user_name,
                 "conversation_id": conversation_id,
+                "call_type": "outbound" if is_outbound_call else "inbound",
                 "metadata": ctx.job.metadata or "",
                 "started_at": firestore.SERVER_TIMESTAMP,
-                "agent_type": "onboarding",
+                "agent_type": "check_in" if is_outbound_call else "onboarding",
             }
             db.collection("call_sessions").add(session_doc)
 
@@ -1121,6 +1171,10 @@ async def entrypoint(ctx: JobContext):
 
     # Start the session, which initializes the voice pipeline and warms up the models
     logger.info("🔧 Starting agent session...")
+    logger.info(
+        f"📋 Mode: {'Outbound check-in' if is_outbound_call else 'Inbound open conversation'}"
+    )
+
     await session.start(
         agent=Assistant(
             user_name=user_name,
@@ -1129,6 +1183,7 @@ async def entrypoint(ctx: JobContext):
             conversation_id=conversation_id,
             existing_habits=existing_habits,
             exceptional_events=exceptional_events,
+            is_outbound=is_outbound_call,
         ),
         room=ctx.room,
         room_input_options=RoomInputOptions(
@@ -1157,12 +1212,19 @@ async def entrypoint(ctx: JobContext):
         else:
             logger.info("👋 Starting onboarding conversation")
 
-        # Greet based on whether we know the user's name
-        if user_name:
+        # Greet based on call type
+        if is_outbound_call and user_name and len(existing_habits) > 0:
+            # Outbound check-in call - directive greeting
             await session.generate_reply(
-                instructions=f"Warmly greet {user_name} by name and start the onboarding conversation. Ask about their habits and goals. Keep it brief, friendly, and natural - like a coach starting a conversation."
+                instructions=f"You're calling {user_name} for their daily check-in. Start immediately: Greet them warmly and say you're calling to check in on their habits. Then immediately ask about their first habit. Be direct and focused - this is a check-in, not a long chat."
+            )
+        elif user_name:
+            # Inbound call with known user - warm greeting
+            await session.generate_reply(
+                instructions=f"Warmly greet {user_name} by name and start the conversation. Ask about their habits and goals. Keep it brief, friendly, and natural - like a coach starting a conversation."
             )
         else:
+            # New user - onboarding
             await session.generate_reply(
                 instructions="Warmly welcome the user and start the onboarding by asking for their name. Keep it brief, friendly, and natural - like a coach starting a conversation."
             )
