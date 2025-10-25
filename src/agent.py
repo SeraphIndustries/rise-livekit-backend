@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import firebase_admin
 from dotenv import load_dotenv
@@ -74,10 +74,12 @@ class Assistant(Agent):
         user_doc_id: str = None,
         conversation_id: str = None,
         existing_habits: list = None,
+        exceptional_events: list = None,
     ) -> None:
         # Determine if this is a new user or returning user
         is_new_user = user_name is None
         has_habits = existing_habits and len(existing_habits) > 0
+        has_events = exceptional_events and len(exceptional_events) > 0
 
         name_instruction = (
             f"Only speak in english. The user's name is {user_name}. Use their name naturally in conversation in english."
@@ -104,12 +106,39 @@ When appropriate, ask about their progress on these habits and use the log_habit
 If they mention wanting to work on something related to an existing habit, acknowledge it and ask if they want to update that habit or create a new one.
 """
 
+        # Build exceptional events context
+        events_context = ""
+        if has_events:
+            events_list = "\n".join(
+                [
+                    f"   - {e.get('title')} ({e.get('event_type')}, impact: {e.get('current_impact', 0):.0%})"
+                    for e in exceptional_events
+                ]
+            )
+            events_context = f"""
+
+EXCEPTIONAL EVENTS:
+The user is currently dealing with these temporary situations:
+{events_list}
+
+Be understanding and adapt your coaching:
+- Don't push too hard on affected habits
+- Acknowledge these challenges when discussing progress
+- Use update_exceptional_event when they mention improvements or setbacks
+- Be compassionate about any habit disruptions related to these events
+
+For example:
+- If injured, don't encourage intense exercise
+- If stressed at work, be extra supportive about any lapses
+- If traveling, acknowledge disrupted routines are normal
+"""
+
         super().__init__(
             instructions=f"""You are a personal growth coach helping users build better habits. The user is interacting with you via voice.
             
             IMPORTANT: You must always speak in English, regardless of what language the user speaks to you in.
             
-            {"This is the user's first call with you." if is_new_user else "This user has called before."}{habits_context}
+            {"This is the user's first call with you." if is_new_user else "This user has called before."}{habits_context}{events_context}
             
             Your conversation flow:
             
@@ -119,6 +148,7 @@ If they mention wanting to work on something related to an existing habit, ackno
                - Be curious and encouraging. Ask follow-up questions to understand their "why"
                - When they mention a specific habit they want to work on, use the create_or_update_habit tool to save it
                - When they share progress on an existing habit, use the log_habit_progress tool
+               - If they mention an injury, illness, stress, or other temporary disruption, use create_exceptional_event tool
             
             3. Plan for today
                - Ask what they plan to do today to work toward their goals
@@ -141,6 +171,7 @@ If they mention wanting to work on something related to an existing habit, ackno
         }
         self.conversation_id = conversation_id
         self.existing_habits = existing_habits or []
+        self.exceptional_events = exceptional_events or []
 
     @function_tool
     async def create_or_update_habit(
@@ -280,6 +311,208 @@ If they mention wanting to work on something related to an existing habit, ackno
         except Exception as e:
             logger.error(f"❌ Error logging habit progress: {e}")
             return "Thanks for sharing your progress! I've made a note of it."
+
+    @function_tool
+    async def create_exceptional_event(
+        self,
+        context: RunContext,
+        event_type: str,
+        title: str,
+        description: str,
+        severity: str = "medium",
+        affected_habit_names: list = None,
+    ):
+        """Record a new exceptional event that might affect the user's habits.
+
+        Use this when the user mentions something temporary but impactful:
+        - Injury or illness
+        - Travel or vacation
+        - Work stress or major project
+        - Family events
+        - Any other disruption to their routine
+
+        Args:
+            event_type: Type of event - "injury", "illness", "travel", "work_stress", "family_event", or "other"
+            title: Short title for the event (e.g., "Knee injury", "Work deadline stress")
+            description: What the user said about it
+            severity: How severe - "low", "medium", or "high"
+            affected_habit_names: List of habit names this might affect (optional)
+        """
+        if not self.user_data.get("user_doc_id"):
+            return "I've made a note of this. Let me know if it affects your routine and I'll help adjust."
+
+        logger.info(f"🚨 Creating exceptional event: {title}")
+
+        if db is None:
+            return f"I understand you're dealing with {title}. I'll keep that in mind."
+
+        try:
+            user_doc_id = self.user_data["user_doc_id"]
+
+            # Determine initial impact based on severity
+            impact_levels = {"low": 0.3, "medium": 0.6, "high": 0.9}
+            impact_level = impact_levels.get(severity, 0.6)
+
+            # Determine decay rate based on event type
+            decay_rates = {
+                "injury": "medium",
+                "illness": "fast",
+                "travel": "fast",
+                "work_stress": "slow",
+                "family_event": "medium",
+                "other": "medium",
+            }
+            decay_rate = decay_rates.get(event_type, "medium")
+
+            # Find affected habit IDs if names provided
+            affected_habit_ids = []
+            if affected_habit_names:
+                habits_ref = (
+                    db.collection("users").document(user_doc_id).collection("habits")
+                )
+                for habit_name in affected_habit_names:
+                    habit_docs = list(
+                        habits_ref.where("name", "==", habit_name).limit(1).stream()
+                    )
+                    if habit_docs:
+                        affected_habit_ids.append(habit_docs[0].id)
+
+            # Create event
+            event_data = {
+                "event_type": event_type,
+                "title": title,
+                "description": description,
+                "severity": severity,
+                "impact_level": impact_level,
+                "decay_rate": decay_rate,
+                "status": "active",
+                "affected_habits": affected_habit_ids,
+                "conversation_id": self.conversation_id,
+                "created_at": firestore.SERVER_TIMESTAMP,
+                "detected_at": firestore.SERVER_TIMESTAMP,
+                "last_mentioned_at": firestore.SERVER_TIMESTAMP,
+                "mention_count": 1,
+                "resolved_at": None,
+            }
+
+            events_ref = (
+                db.collection("users")
+                .document(user_doc_id)
+                .collection("exceptional_events")
+            )
+            new_event = events_ref.add(event_data)
+            event_id = new_event[1].id
+
+            logger.info(f"✅ Created exceptional event: {event_id}")
+
+            return f"I've noted that you're dealing with {title}. I'll keep this in mind when we talk about your habits and progress."
+
+        except Exception as e:
+            logger.error(f"❌ Error creating exceptional event: {e}")
+            return f"I understand about {title}. I'll remember to be understanding about this."
+
+    @function_tool
+    async def update_exceptional_event(
+        self,
+        context: RunContext,
+        event_title: str,
+        progress_note: str,
+        feeling: str = "same",
+    ):
+        """Update an existing exceptional event with progress.
+
+        Use this when the user mentions an update about a previous event.
+
+        Args:
+            event_title: The title of the event being updated
+            progress_note: What the user said about their progress
+            feeling: How they feel about it - "better", "worse", or "same"
+        """
+        if not self.user_data.get("user_doc_id"):
+            return "Thanks for the update! I hope things improve soon."
+
+        logger.info(f"📝 Updating exceptional event: {event_title}")
+
+        if db is None:
+            return "Thanks for letting me know how you're doing."
+
+        try:
+            user_doc_id = self.user_data["user_doc_id"]
+            events_ref = (
+                db.collection("users")
+                .document(user_doc_id)
+                .collection("exceptional_events")
+            )
+
+            # Find event by title
+            event_docs = list(
+                events_ref.where("title", "==", event_title)
+                .where("status", "in", ["active", "improving"])
+                .limit(1)
+                .stream()
+            )
+
+            if not event_docs:
+                return f"I don't have a record of '{event_title}'. Would you like me to create it as a new event?"
+
+            event_doc = event_docs[0]
+            event_id = event_doc.id
+            event_data = event_doc.to_dict()
+
+            # Calculate impact change based on feeling
+            current_impact = event_data.get("impact_level", 0.5)
+            impact_changes = {"better": -0.2, "worse": 0.2, "same": 0.0}
+            impact_change = impact_changes.get(feeling, 0.0)
+            new_impact = max(0.0, min(1.0, current_impact + impact_change))
+
+            # Determine new status
+            new_status = event_data.get("status", "active")
+            if feeling == "better" and new_impact < 0.3:
+                new_status = "improving"
+            elif feeling == "worse":
+                new_status = "active"
+
+            # Update event
+            update_data = {
+                "impact_level": new_impact,
+                "status": new_status,
+                "last_mentioned_at": firestore.SERVER_TIMESTAMP,
+                "mention_count": event_data.get("mention_count", 1) + 1,
+            }
+
+            # Mark as resolved if impact is very low
+            if new_impact < 0.05:
+                update_data["status"] = "resolved"
+                update_data["resolved_at"] = firestore.SERVER_TIMESTAMP
+
+            events_ref.document(event_id).update(update_data)
+
+            # Log update in subcollection
+            update_entry = {
+                "conversation_id": self.conversation_id,
+                "note": progress_note,
+                "impact_change": impact_change,
+                "timestamp": firestore.SERVER_TIMESTAMP,
+            }
+            events_ref.document(event_id).collection("updates").add(update_entry)
+
+            logger.info(f"✅ Updated exceptional event {event_id}")
+
+            if feeling == "better":
+                if new_status == "resolved":
+                    return f"That's wonderful! It sounds like {event_title} is behind you now."
+                else:
+                    return (
+                        f"I'm glad to hear you're feeling better about {event_title}!"
+                    )
+            elif feeling == "worse":
+                return f"I'm sorry to hear that {event_title} is still challenging. Take care of yourself."
+            else:
+                return f"Thanks for the update on {event_title}."
+
+        except Exception as e:
+            logger.error(f"❌ Error updating exceptional event: {e}")
+            return "Thanks for sharing how you're doing."
 
     @function_tool
     async def save_onboarding_info(
@@ -433,6 +666,97 @@ async def save_message_to_conversation(
         logger.error(f"❌ Error saving message to conversation: {e}")
 
 
+def calculate_current_impact(event: dict) -> float:
+    """Calculate the current impact of an exceptional event based on decay.
+
+    Args:
+        event: Event dictionary with impact_level, decay_rate, created_at, etc.
+
+    Returns:
+        Current impact level (0.0 - 1.0)
+    """
+    try:
+        # Get timestamps
+        created_at = event.get("created_at")
+        last_mentioned_at = event.get("last_mentioned_at", created_at)
+
+        if not created_at:
+            return event.get("impact_level", 0.5)
+
+        # Calculate days elapsed
+        now = datetime.now()
+        if hasattr(created_at, "timestamp"):
+            created_timestamp = created_at
+        else:
+            created_timestamp = created_at
+
+        days_since_created = (
+            (now - created_timestamp).days if hasattr(created_timestamp, "days") else 0
+        )
+
+        # Decay rates
+        decay_rates = {"fast": 0.1, "medium": 0.05, "slow": 0.02}
+        decay_factor = decay_rates.get(event.get("decay_rate", "medium"), 0.05)
+
+        # Calculate decayed impact
+        base_impact = event.get("impact_level", 0.5)
+        impact = base_impact * ((1 - decay_factor) ** days_since_created)
+
+        # Clamp between 0 and 1
+        return max(0.0, min(1.0, impact))
+    except Exception as e:
+        logger.error(f"Error calculating impact: {e}")
+        return event.get("impact_level", 0.5)
+
+
+async def get_active_exceptional_events(
+    user_doc_id: str, lookback_days: int = 30
+) -> list:
+    """Get exceptional events from the last N days with meaningful impact.
+
+    Args:
+        user_doc_id: The user's document ID
+        lookback_days: How many days back to look for events
+
+    Returns:
+        List of event dictionaries with current_impact calculated
+    """
+    if db is None or not user_doc_id:
+        return []
+
+    try:
+        cutoff_date = datetime.now() - timedelta(days=lookback_days)
+
+        events_ref = (
+            db.collection("users")
+            .document(user_doc_id)
+            .collection("exceptional_events")
+        )
+
+        # Get active and improving events
+        events_docs = events_ref.where("status", "in", ["active", "improving"]).stream()
+
+        events = []
+        for doc in events_docs:
+            event = doc.to_dict()
+            event["id"] = doc.id
+
+            # Calculate current impact with decay
+            event["current_impact"] = calculate_current_impact(event)
+
+            # Only include if still has meaningful impact
+            if event["current_impact"] > 0.1:
+                events.append(event)
+
+        logger.info(
+            f"🚨 Loaded {len(events)} active exceptional events for user {user_doc_id}"
+        )
+        return events
+    except Exception as e:
+        logger.error(f"❌ Error loading exceptional events: {e}")
+        return []
+
+
 async def get_user_habits(user_doc_id: str) -> list:
     """Get all active habits for a user from Firestore.
 
@@ -581,6 +905,7 @@ async def entrypoint(ctx: JobContext):
     user_name = None
     user_doc_id = None
     existing_habits = []
+    exceptional_events = []
 
     if phone_number:
         user_info = await lookup_user_by_phone(phone_number)
@@ -591,6 +916,9 @@ async def entrypoint(ctx: JobContext):
 
             # Load existing habits for this user
             existing_habits = await get_user_habits(user_doc_id)
+
+            # Load active exceptional events
+            exceptional_events = await get_active_exceptional_events(user_doc_id)
         else:
             logger.info(f"👤 New user - phone number not in database: {phone_number}")
 
@@ -716,6 +1044,7 @@ async def entrypoint(ctx: JobContext):
             user_doc_id=user_doc_id,
             conversation_id=conversation_id,
             existing_habits=existing_habits,
+            exceptional_events=exceptional_events,
         ),
         room=ctx.room,
         room_input_options=RoomInputOptions(

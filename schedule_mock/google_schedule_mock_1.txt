@@ -1,0 +1,249 @@
+{
+    "events": [
+        {
+            "id": "0a8fjthpeb1uibr8h83ldmvd37",
+            "summary": "Meal Prep",
+            "start": "2025-10-26T11:00:00+09:00",
+            "end": "2025-10-26T13:00:00+09:00",
+            "description": "<ul><li>Prep meals for the week</li><li>   •        •    <b>Note:</b> Good intention, rarely happens</li></ul>"
+        },
+        {
+            "id": "6q3fai2bcc3732fct3l3uij9og",
+            "summary": "Flowers for mom",
+            "start": "2025-10-26T15:00:00+09:00",
+            "end": "2025-10-26T16:00:00+09:00",
+            "description": "My monthly gift for mom"
+        },
+        {
+            "id": "0d9j4sjh73ehcr8q6o6joa5jut",
+            "summary": "Church",
+            "start": "2025-10-26T18:00:00+09:00",
+            "end": "2025-10-26T20:00:00+09:00",
+            "description": "Pastor Tim will be doing service today"
+        },
+        {
+            "id": "79fanh7vghbqgs08et7grjkn5k",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-27T09:00:00+09:00",
+            "end": "2025-10-27T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "0opsa53q7cui9288qt21ciaqbk",
+            "summary": "Product Roadmap Review",
+            "start": "2025-10-27T10:00:00+09:00",
+            "end": "2025-10-27T11:00:00+09:00",
+            "description": "<ul><li>Q4 roadmap priorities and resource allocation</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Need to finalize slides and review Q3 metrics</p>"
+        },
+        {
+            "id": "49e68q1fg903mu7l40nr4slk9o",
+            "summary": "1:1 with Jordan (Designer)",
+            "start": "2025-10-27T11:30:00+09:00",
+            "end": "2025-10-27T12:00:00+09:00",
+            "description": "<ul><li>Weekly 1:1 - design feedback and career development</li></ul>"
+        },
+        {
+            "id": "2f2jsok45th3gds9892pecqckl",
+            "summary": "User Research Debrief",
+            "start": "2025-10-27T14:00:00+09:00",
+            "end": "2025-10-27T15:00:00+09:00",
+            "description": "<ul><li>Review findings from last week's user interviews</li></ul>"
+        },
+        {
+            "id": "361qf4sal3qk7svdf5um52jsb0",
+            "summary": "Sprint Planning",
+            "start": "2025-10-27T15:30:00+09:00",
+            "end": "2025-10-27T17:00:00+09:00",
+            "description": "<ul><li>Sprint 23 planning - story estimation and commitment</li></ul>"
+        },
+        {
+            "id": "0j354i68u5kkrejklq6vtjfl8j",
+            "summary": "Gym - Olympic Lifts",
+            "start": "2025-10-27T20:00:00+09:00",
+            "end": "2025-10-27T22:00:00+09:00",
+            "description": "I need to eat a lot of fruit before this session"
+        },
+        {
+            "id": "7lseqohq3mr02j1h2ltbme6odd",
+            "summary": "Marketing Sync",
+            "start": "2025-10-28T09:30:00+09:00",
+            "end": "2025-10-28T10:00:00+09:00",
+            "description": "<ul><li>Product marketing alignment for upcoming launch</li></ul>"
+        },
+        {
+            "id": "2na5tq7q1e44667d0s0lon09es",
+            "summary": "Customer Call - Acme Corp",
+            "start": "2025-10-28T10:30:00+09:00",
+            "end": "2025-10-28T11:30:00+09:00",
+            "description": "<ul><li>Enterprise customer feedback session - integration pain points</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Review their support tickets and feature requests</p>"
+        },
+        {
+            "id": "4bjiv531th998tl2etronp4u59",
+            "summary": "LUNCH - blocked",
+            "start": "2025-10-28T12:00:00+09:00",
+            "end": "2025-10-28T12:30:00+09:00",
+            "description": "<ul><li>Personal - lunch break</li><li>   •        •    <b>Note:</b> You historically cancel this for meetings</li></ul>"
+        },
+        {
+            "id": "2tl15naju1u8ochmu9o92k6kga",
+            "summary": "Engineering Architecture Discussion",
+            "start": "2025-10-28T13:00:00+09:00",
+            "end": "2025-10-28T14:00:00+09:00",
+            "description": "<ul><li><b>Description:</b> Technical approach for notification system redesign</li></ul>"
+        },
+        {
+            "id": "3o7vdumikssm61ufee6td5gb7k",
+            "summary": "Competitive Analysis Workshop",
+            "start": "2025-10-28T14:30:00+09:00",
+            "end": "2025-10-28T16:00:00+09:00",
+            "description": "<ul><li>Deep dive on competitor features and market positioning</li></ul>"
+        },
+        {
+            "id": "5kco1hkeokhbo5gujspr4llnjd",
+            "summary": "Leadership Coffee Chat",
+            "start": "2025-10-28T16:00:00+09:00",
+            "end": "2025-10-28T17:00:00+09:00",
+            "description": "<ul><li>Informal check-in</li></ul>"
+        },
+        {
+            "id": "27ua9ure01dub8cp97ccg4ag8o",
+            "summary": "Drop dog off at groomer",
+            "start": "2025-10-28T19:00:00+09:00",
+            "end": "2025-10-28T20:00:00+09:00",
+            "description": "Missy's hair is getting too long"
+        },
+        {
+            "id": "617l34o4ms6reqf6gv4nl7qkap",
+            "summary": "Meditation",
+            "start": "2025-10-28T21:00:00+09:00",
+            "end": "2025-10-28T21:30:00+09:00",
+            "description": "My weekly re-sync"
+        },
+        {
+            "id": "3n2ekq1kcagb7q8kgiqdb6do0p",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-29T09:00:00+09:00",
+            "end": "2025-10-29T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "3d7uhin55ujf3s44khrm4t1d7r",
+            "summary": "Product Strategy Session",
+            "start": "2025-10-29T10:00:00+09:00",
+            "end": "2025-10-29T12:00:00+09:00",
+            "description": "<ul><li>2026 vision and long-term strategy planning</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Bring ideas for new verticals</p>"
+        },
+        {
+            "id": "7d1lii8oauua68i3ll0962encj",
+            "summary": "FOCUS TIME - Product Spec",
+            "start": "2025-10-29T13:00:00+09:00",
+            "end": "2025-10-29T15:00:00+09:00",
+            "description": "<ul><li>Deep work: finish notification system spec</li><li>   •        •    <b>Note:</b> Protected time - created 2 weeks ago but keep getting meeting requests</li></ul>"
+        },
+        {
+            "id": "69l9ancb7m9p8h65bd394ordvm",
+            "summary": "Design Review",
+            "start": "2025-10-29T15:00:00+09:00",
+            "end": "2025-10-29T16:30:00+09:00",
+            "description": "<ul><li>Weekly design critique and feedback</li></ul>"
+        },
+        {
+            "id": "7g6tdhj4l18hl5mn3v0ie5mi5r",
+            "summary": "Dinner Date",
+            "start": "2025-10-29T18:00:00+09:00",
+            "end": "2025-10-29T19:00:00+09:00",
+            "description": "Third time meeting up with Stacy"
+        },
+        {
+            "id": "7s1to8fmv3ev3crhafh6r5cumm",
+            "summary": "All-Hands Meeting",
+            "start": "2025-10-30T09:00:00+09:00",
+            "end": "2025-10-30T10:00:00+09:00",
+            "description": "<ul><li>Monthly company-wide update from CEO</li></ul>"
+        },
+        {
+            "id": "0du8k9rkh8o2crp1ch8tlkqvve",
+            "summary": "Vendor Demo - Analytics Tool",
+            "start": "2025-10-30T10:30:00+09:00",
+            "end": "2025-10-30T11:30:00+09:00",
+            "description": "<ul><li>Evaluating new product analytics platform</li></ul>"
+        },
+        {
+            "id": "0o9qk6v7j8thgidcrcotampch7",
+            "summary": "Budget Planning Q1",
+            "start": "2025-10-30T13:00:00+09:00",
+            "end": "2025-10-30T14:00:00+09:00",
+            "description": "<ul><li>2026 Q1 budget allocation and headcount planning</li></ul><p>    •        •    <b>Notes:</b> ⚠️ Need to submit team priorities by end of week</p>"
+        },
+        {
+            "id": "5s28clodfivonhaes1j44tbts5",
+            "summary": "User Testing Observation",
+            "start": "2025-10-30T15:00:00+09:00",
+            "end": "2025-10-30T16:00:00+09:00",
+            "description": "<ul><li>Watch users test new onboarding flow</li></ul>"
+        },
+        {
+            "id": "6172aeuabc3plo5oftjn7995at",
+            "summary": "URGENT: Bug Triage",
+            "start": "2025-10-30T16:30:00+09:00",
+            "end": "2025-10-30T17:30:00+09:00",
+            "description": "<ul><li>Critical production bug affecting enterprise customers</li><li>   •        •    <b>Note:</b> Last-minute addition - added at 3:45 PM same day</li></ul>"
+        },
+        {
+            "id": "7747deq5hmlbn8t5netuhhifu3",
+            "summary": "Movie with the guys",
+            "start": "2025-10-30T20:00:00+09:00",
+            "end": "2025-10-30T22:00:00+09:00",
+            "description": "Our weekly catch up and unwind"
+        },
+        {
+            "id": "3ltfmro11s44c1nh2d1b5q9u2u",
+            "summary": "Weekly Team Standup",
+            "start": "2025-10-31T09:00:00+09:00",
+            "end": "2025-10-31T09:30:00+09:00",
+            "description": "<ul><li>Weekly sync on sprint progress</li></ul>"
+        },
+        {
+            "id": "77p27eiabqgnck4gt35c8612dt",
+            "summary": "Sprint Retro",
+            "start": "2025-10-31T10:00:00+09:00",
+            "end": "2025-10-31T11:00:00+09:00",
+            "description": "<ul><li>Sprint 22 retrospective - what went well, what to improve</li></ul>"
+        },
+        {
+            "id": "40sea5k2tqhfgciai8980r4tg4",
+            "summary": "1:1 with Manager",
+            "start": "2025-10-31T11:30:00+09:00",
+            "end": "2025-10-31T12:00:00+09:00",
+            "description": "<ul><li>Weekly 1:1 - projects, blockers, career development</li></ul>"
+        },
+        {
+            "id": "43om9cvpp6mqi64rb9ftb0pi8i",
+            "summary": "Product Demo - Internal",
+            "start": "2025-10-31T14:00:00+09:00",
+            "end": "2025-10-31T15:00:00+09:00",
+            "description": "<ul><li>Show recent features to internal stakeholders</li></ul>"
+        },
+        {
+            "id": "0vcnb3jds4ecnmoqc57q1j57n3",
+            "summary": "FOCUS TIME - Catch up",
+            "start": "2025-10-31T15:30:00+09:00",
+            "end": "2025-10-31T17:00:00+09:00",
+            "description": "<ul><li>Finish anything that slipped this week</li><li>   •        •    <b>Note:</b> Optimistically created but usually given up</li></ul>"
+        },
+        {
+            "id": "5lj6vcmkdbpqugvbb7t8j0amn3",
+            "summary": "Dentist Appointment",
+            "start": "2025-11-01T10:00:00+09:00",
+            "end": "2025-11-01T11:00:00+09:00",
+            "description": "<ul><li>Regular checkup - overdue by 3 months</li><li>   •        •    <b>Note:</b> Rescheduled twice already</li></ul>"
+        },
+        {
+            "id": "601m8acmfddehu912agngp1lb3",
+            "summary": "Gym - blocked",
+            "start": "2025-11-01T14:00:00+09:00",
+            "end": "2025-11-01T15:00:00+09:00",
+            "description": "<ul><li>Weekend workout</li></ul>"
+        }
+    ]
+}

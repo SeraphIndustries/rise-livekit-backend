@@ -1,0 +1,104 @@
+{
+    "tasks": [
+        {
+            "id": "U3pBbUo4MVVpby1vdGRyYQ",
+            "title": "10. Competitive analysis doc",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: Started research but haven't written anything up yet\n",
+            "updated": "2025-10-25T06:46:48.695Z"
+        },
+        {
+            "id": "blAzb1l4RkpWSTdDeU96Mw",
+            "title": "9. Update PRD for mobile app redesign",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-30T00:00:00.000Z",
+            "notes": "* Notes: Half done but lost momentum\n",
+            "updated": "2025-10-25T06:46:32.279Z"
+        },
+        {
+            "id": "cllpU2hTUlJEMkZHSk5FWg",
+            "title": "8. Review sprint 23 tickets ⚠️",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: Need to groom backlog before Monday planning\n",
+            "updated": "2025-10-25T06:46:17.720Z"
+        },
+        {
+            "id": "YXZfX2F3aWQ1OEJTVS1BNg",
+            "title": "7. Respond to Acme Corp feature requests",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-29T00:00:00.000Z",
+            "notes": "* Notes: They sent 8 feature requests. Need to prioritize and respond diplomatically.\n",
+            "updated": "2025-10-25T06:46:02.734Z"
+        },
+        {
+            "id": "V281cHBCUWNLWjFyemp6Mg",
+            "title": "6. Write performance reviews for direct reports 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-31T00:00:00.000Z",
+            "notes": "* Notes: Dreading this. Have notes scattered everywhere.\n",
+            "updated": "2025-10-25T06:45:49.182Z"
+        },
+        {
+            "id": "Y0ZDYlVMRVFOWUY2akM3bQ",
+            "title": "5. Submit budget headcount plan 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: Finance needs this by EOW. No idea what to ask for yet.\n",
+            "updated": "2025-10-25T06:45:32.383Z"
+        },
+        {
+            "id": "RDNoeFdNZXVHc18yRVpFYg",
+            "title": "4. Write Q4 team goals 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-27T00:00:00.000Z",
+            "notes": "* Notes: Manager has asked 3 times. This is getting embarrassing.\n",
+            "updated": "2025-10-25T06:45:12.889Z"
+        },
+        {
+            "id": "RGlCR2tBZjFwZFBmUWZpZw",
+            "title": "3. Update roadmap deck for exec review 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: VP wants to see this before Thursday's all-hands\n",
+            "updated": "2025-10-25T06:44:57.540Z"
+        },
+        {
+            "id": "bGRqOS1iUEJQaU9YSGlpXw",
+            "title": "Review Jordan's design mockups 🔥⚠️",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-28T00:00:00.000Z",
+            "notes": "* Notes: Jordan needs feedback before Thursday. They're blocked.\n",
+            "updated": "2025-10-25T06:44:32.668Z"
+        },
+        {
+            "id": "X1I0c0dKMUZCWDVIQWRuWQ",
+            "title": "1. Finish notification system product spec 🔥",
+            "listName": "My Tasks",
+            "listId": "MDI4NTUyMTU1MzcwODQ3MjUzNjc6MDow",
+            "status": "needsAction",
+            "due": "2025-10-27T00:00:00.000Z",
+            "notes": "* Notes: Started but keep getting interrupted. Need 3-4 focused hours.\n* Subtasks:\n    * ✅ Define user stories (DONE)\n    * ⏳ Technical requirements doc (IN PROGRESS)\n    * ⏳ Get engineering review (NOT STARTED)",
+            "updated": "2025-10-25T06:44:03.177Z"
+        }
+    ]
+}
